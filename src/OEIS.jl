@@ -1,6 +1,6 @@
 module OEIS
 
-using Requests, Iterators
+using HTTP, IterTools
 
 import Base: show
 export oeis
@@ -13,9 +13,9 @@ export oeis
 #   %V, %W, %X signed values (only if sequence contains negative numbers)
 #   %N name
 
-type IntegerSequence{T<:Integer}
+mutable struct IntegerSequence{T<:Integer}
     id::Symbol
-    name::ASCIIString
+    name::String
     values::Vector{T}
 end
 
@@ -30,15 +30,22 @@ function show(io::IO,seq::IntegerSequence)
 end
 
 # there has to be a better way than this...
-bestint(s::String) = macroexpand(parse(s))
+function bestint(s::AbstractString)
+    inttypes = [Int8, Int16, Int32, Int64, Int128, UInt128]
+    for T in inttypes
+        n = tryparse(T, s)
+        n != nothing && return n
+    end
+    return parse(BigInt, s)
+end
 
 
 function parse_oeis_page(s::String)
-    if contains(s,"Too many results. Please narrow search.")
+    if occursin("Too many results. Please narrow search.", s)
         error("Too many results. Please narrow search.")
     end
     seqs = IntegerSequence[]
-    lines = filter(l -> length(l)>=10 && l[1]=='%', split(s,'\n') )
+    lines = filter(l -> length(l)>=10 && l[1]=='%', split(s, '\n') )
     for r in groupby(l -> l[4:10], lines)
         push!(seqs, parse_oeis_record(r))
     end
@@ -54,32 +61,33 @@ function parse_oeis_record(r)
         elseif C == 'N'
             name = line[12:end]
         elseif C in ('S','V')
-            vec = Integer[bestint(s) for s in split(line[12:end],',',0,false)]
+            vec = Integer[bestint(s) for s in split(line[12:end], ',', keepempty=false)]
         elseif C in ('T','U','W','X')
-            append!(vec,Integer[bestint(s) for s in split(line[12:end],',',0,false)])
+            append!(vec, Integer[bestint(s) for s in split(line[12:end], ',' , keepempty=false)])
         end
     end
     if all(i -> isa(i,Int), vec)
         vec = Int[i for i in vec]
     end
-    IntegerSequence(symbol(id),bytestring(name),vec)
+    IntegerSequence(Symbol(id), String(name), vec)
 end
 
 
 
 function oeis(query::String)
-    r = get("http://oeis.org/search"; query={"fmt" => "text", "q" => query})
-    parse_oeis_page(r.data)
+    r = HTTP.get("http://oeis.org/search"; query=Dict("fmt" => "text", "q" => query))
+     parse_oeis_page(String(r.body))
 end
 
 function oeis(id::Symbol)
-    r = get("http://oeis.org/search"; query={"fmt" => "text", "q" => string("id:",id)})
-    parse_oeis_page(r.data)[1]
+    r = HTTP.get("http://oeis.org/search"; query=Dict("fmt" => "text", "q" => string("id:",id)))
+    #parse_oeis_page(r.data)[1] TODO remove
+    parse_oeis_page(String(r.body))[1]
 end
 
 function oeis(seq::Array)
-    r = get("http://oeis.org/search"; query={"fmt" => "text", "q" => join(seq,',')})
-    parse_oeis_page(r.data)
+    r = HTTP.get("http://oeis.org/search"; query=Dict("fmt" => "text", "q" => join(seq,',')))
+    parse_oeis_page(String(r.body))
 end
 
 
