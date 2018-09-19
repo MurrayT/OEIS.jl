@@ -1,9 +1,10 @@
 using OEIS
-using Base.Test
+using Test
+using Primes
 
 # prime numbers
 s = oeis(:A000040)
-@test s.values == primes(s.values[end])
+@test s.values == primes(Int(s.values[end]))
 
 # test Int128
 s = oeis(:A000521)
