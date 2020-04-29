@@ -1,0 +1,20 @@
+name = "OEIS"
+uuid = "a6b64278-95f1-5116-81d8-062578f52c5f"
+version = "0.1.0"
+
+[deps]
+IterTools = "c8e1da08-722c-5040-9ed9-7db0dc04731e"
+Primes = "27ebfcd6-29c5-5fa9-bf4b-fb8fc14df3ae"
+HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
+
+[compat]
+julia = "0.7,1"
+IterTools = "1"
+Primes = "0"
+HTTP = "0"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
